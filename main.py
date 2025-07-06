@@ -44,10 +44,31 @@ class Board:
         self._board[row][column] = value
     
     def print(self):
-        for row in self._board:
+        self._print_column_numbers_header()
+        for row_number, row in enumerate(self._board, 1):
+            self._print_row_header(row_number)
             for value in row:
                 print(self.render_values[value], end="")
             print()
+
+    def _print_column_numbers_header(self):
+        print("   ", end="")
+        for column_index in range(1, self._max_x + 1):
+            if column_index in (1, 5):
+                print(f"{column_index} ", end="")
+            elif column_index % 5 == 0:
+                print(column_index, end="")
+            else:
+                print("  ", end="")
+        print()
+    
+    def _print_row_header(self, row_number: int):
+        if row_number in (1, 5):
+            print(f"{row_number}  ", end="")
+        elif row_number % 5 == 0:
+            print(f"{row_number} ", end="")
+        else:
+            print("   ", end="")
 
 
 def fill_middle_parts(rules, board):
@@ -59,7 +80,7 @@ def fill_middle_parts(rules, board):
     # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     # Надо построить самый левый вариант колбас и самый правый вариант колбас
     sausages_variants = []  # список строк
-    for row_number, rule_row in enumerate(rules["horizontal"], 1):
+    for rule_row in rules["horizontal"]:
         sausages_variant = {sausage_index: {"left_variant_coords": tuple(),
                                             "right_variant_coords": tuple()}
                             for sausage_index in range(len(rule_row))}
@@ -93,7 +114,6 @@ def fill_middle_parts(rules, board):
         for sausage_index, current_sausage_variants in row.items():
             if current_sausage_variants["left_variant_coords"][1] >= current_sausage_variants["right_variant_coords"][0]:
                 # Ура! Есть пересечение!
-                #print(f"Есть пересечение на строке {row_index + 1}, правила {rules['horizontal'][row_index]}")
                 for cell_index in range(current_sausage_variants["right_variant_coords"][0],
                                         current_sausage_variants["left_variant_coords"][1] + 1):
                     board.fill_cell(row_index, cell_index, 1)
@@ -103,16 +123,11 @@ def fill_middle_parts(rules, board):
 
 def main():
     rules = read_crossword_rules(RULES_FILE)
-    #pprint(rules)
     board_size = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
     board = Board(board_size["horizontal"], board_size["vertical"])
     
-    print("initial board state")
-    board.print()
-    
     fill_middle_parts(rules, board)
 
-    print("after fill horizontal moddle parts board state")
     board.print()
 
 
