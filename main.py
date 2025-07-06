@@ -56,7 +56,9 @@ class Board:
             self._print_row_header(row_number)
             for value in row:
                 print(self.render_values[value], end="")
+            self._print_row_header(row_number)
             print()
+        self._print_column_numbers_header()
 
     def _print_column_numbers_header(self):
         print("   ", end="")
