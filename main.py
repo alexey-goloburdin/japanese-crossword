@@ -86,20 +86,20 @@ def fill_middle_parts(rules, board):
 
     # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     # Надо построить самый левый вариант колбас и самый правый вариант колбас
-    sausages_variants = []  # список строк
+    sausages_variants_in_rows = []  # список строк с гипотетическими вариантами колбасок
     for rule_row in rules["horizontal"]:
-        sausages_variant = {sausage_index: {"left_variant_coords": tuple(),
-                                            "right_variant_coords": tuple()}
-                            for sausage_index in range(len(rule_row))}
+        # гипотетические положения колбасок в текущей строке
+        sausages_variants_in_row = {sausage_index: {"left_variant_coords": tuple(),
+                                                    "right_variant_coords": tuple()}
+                                    for sausage_index in range(len(rule_row))}
 
         # Строим левый вариант колбас
         current_cell_index = 0
         for sausage_index, sausage_length_rule in enumerate(rule_row):
-
             sausage_start_cell = current_cell_index
             sausage_end_cell = current_cell_index + sausage_length_rule - 1
 
-            sausages_variant[sausage_index]["left_variant_coords"] = (sausage_start_cell, sausage_end_cell)
+            sausages_variants_in_row[sausage_index]["left_variant_coords"] = (sausage_start_cell, sausage_end_cell)
             current_cell_index += sausage_length_rule + 1
 
         # Строим правый вариант колбас
@@ -108,16 +108,16 @@ def fill_middle_parts(rules, board):
             sausage_end_cell = current_cell_index
             sausage_start_cell = current_cell_index - sausage_length_rule + 1
 
-            sausages_variant[len(rule_row) - sausage_index - 1]["right_variant_coords"] = (sausage_start_cell, sausage_end_cell)
+            sausages_variants_in_row[len(rule_row) - sausage_index - 1]["right_variant_coords"] = (sausage_start_cell, sausage_end_cell)
             current_cell_index -= sausage_length_rule + 1
 
-        sausages_variants.append(sausages_variant)
+        sausages_variants_in_rows.append(sausages_variants_in_row)
 
-    # for row in sausages_variants:
+    # for row in sausages_variants_in_rows:
     #     print(row)
 
     # Теперь надо найти пересечения одних и тех же колбасок в строках
-    for row_index, row in enumerate(sausages_variants):
+    for row_index, row in enumerate(sausages_variants_in_rows):
         for sausage_index, current_sausage_variants in row.items():
             if current_sausage_variants["left_variant_coords"][1] >= current_sausage_variants["right_variant_coords"][0]:
                 # Ура! Есть пересечение!
@@ -126,6 +126,45 @@ def fill_middle_parts(rules, board):
                     board.fill_cell(row_index, cell_index, 1)
 
     # 2. Обходим все колонки в попытке найти серединки, которые можно закрасить, и закрашиваем их
+    # Надо построить самый верхний вариант колбас и самый нижний вариант колбас
+    sausages_variants_in_columns = []  # список колонок с гипотетическими вариантами колбасок
+    for rule_column in rules["vertical"]:
+        # гипотетические положения колбасок в текущей колонке
+        sausages_variants_in_column = {sausage_index: {"top_variant_coords": tuple(),
+                                                       "bottom_variant_coords": tuple()}
+                                       for sausage_index in range(len(rule_column))}
+
+        # Строим верхний вариант колбас
+        current_cell_index = 0
+        for sausage_index, sausage_length_rule in enumerate(rule_column):
+            sausage_start_cell = current_cell_index
+            sausage_end_cell = current_cell_index + sausage_length_rule - 1
+
+            sausages_variants_in_column[sausage_index]["top_variant_coords"] = (sausage_start_cell, sausage_end_cell)
+            current_cell_index += sausage_length_rule + 1
+
+        # Строим нижний вариант колбас
+        current_cell_index = board_vertical_size - 1
+        for sausage_index, sausage_length_rule in enumerate(reversed(rule_column)): # в обратном порядке берём колбаски
+            sausage_end_cell = current_cell_index
+            sausage_start_cell = current_cell_index - sausage_length_rule + 1
+
+            sausages_variants_in_column[len(rule_column) - sausage_index - 1]["bottom_variant_coords"] = (sausage_start_cell, sausage_end_cell)
+            current_cell_index -= sausage_length_rule + 1
+
+        sausages_variants_in_columns.append(sausages_variants_in_column)
+
+    # for row in sausages_variants_in_columns:
+    #     print(row)
+
+    # Теперь надо найти пересечения одних и тех же колбасок в колонках
+    for column_index, column in enumerate(sausages_variants_in_columns):
+        for sausage_index, current_sausage_variants in column.items():
+            if current_sausage_variants["top_variant_coords"][1] >= current_sausage_variants["bottom_variant_coords"][0]:
+                # Ура! Есть пересечение!
+                for cell_index in range(current_sausage_variants["bottom_variant_coords"][0],
+                                        current_sausage_variants["top_variant_coords"][1] + 1):
+                    board.fill_cell(cell_index, column_index, 1)
 
 
 def main():
@@ -136,7 +175,6 @@ def main():
     fill_middle_parts(rules, board)
 
     board.print()
-
 
 
 if __name__ == "__main__":
