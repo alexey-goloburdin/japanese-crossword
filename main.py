@@ -4,6 +4,8 @@ from pathlib import Path
 from pprint import pprint
 from typing import Literal
 
+import helpers
+
 
 RULES_FILE = "rules.json"
 
@@ -41,16 +43,31 @@ class Board:
             [None for _ in range(max_x) ] for _ in range(max_y)
         ]
 
-    def get_board_size(self):
+    def get_size(self):
+        """
+        Возвращает размер поля в формате (x, y).
+        """
         return self._max_x, self._max_y
 
+    def get_state(self):
+        """
+        Возвращает копию текущего состояния поля — массив строк.
+        """
+        return list(self._board)
+
     def fill_cell(self, row: int, column: int, value: Literal[0] | Literal[1]):
+        """
+        Проставляет ячейку заполненной или пустой.
+        """
         old_cell_value = self._board[row][column]
         if old_cell_value is not None and old_cell_value != value:
             raise IncorrectCellFill(f"Статус ячейки ({row}, {column}) был {old_cell_value}, нельзя перевести в {value}")
         self._board[row][column] = value
     
     def print(self):
+        """
+        Печатает текущее состояние поля.
+        """
         self._print_column_numbers_header()
         for row_number, row in enumerate(self._board, 1):
             self._print_row_header(row_number)
@@ -137,9 +154,9 @@ def _fill_sausages_variants_intersections(sausages_variants_in_rows,
 
 def fill_middle_parts(rules, board):
     """
-    Ищет середины строк и колонок, которые можно закрасить
+    Ищет середины строк и колонок, которые точно можно закрасить, и закрашивает их.
     """
-    board_horizontal_size, board_vertical_size = board.get_board_size()
+    board_horizontal_size, board_vertical_size = board.get_size()
 
     # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     # Надо построить самый левый вариант колбас и самый правый вариант колбас
@@ -153,12 +170,57 @@ def fill_middle_parts(rules, board):
     _fill_sausages_variants_intersections(sausages_variants_in_columns, board, processing="columns")
 
 
+
+def fill_empty_cells_for_partially_filled_row(rules, board):
+    """
+    Ищет строки/колонки с одной колбаской, которая уже частично заполнена, чтобы проставить пустые ячейки
+    в краях строки/колонки там, где это возможно.
+    """
+    board_state = board.get_state()
+    
+    # 1. Обрабатываем строки
+    for row_index, row in enumerate(board_state):
+        # убираем строки, в которых пока ничего не заполнено
+        if not any(row): continue
+
+        # убираем строки, в которых больше 1 колбаски по условиям кроссворда
+        if len(rules["horizontal"][row_index]) > 1: continue
+        
+        # вычисляем правую сторону текущей заполненной колбасы
+        right_sausage_coord = helpers.find_last_1_index(row)
+        assert right_sausage_coord != -1
+
+        if right_sausage_coord > rules["horizontal"][row_index][0]:
+            # Можно слева проставить точки (пустые ячейки)
+            left_dot_coord = right_sausage_coord - rules["horizontal"][row_index][0]
+
+            for column_index in range(0, left_dot_coord + 1):
+                board.fill_cell(row_index, column_index, 0)
+
+        # вычисляем левую сторону текущей заполненной колбасы
+        left_sausage_coord = helpers.find_first_1_index(row)
+        assert left_sausage_coord != -1
+
+        if left_sausage_coord + rules["horizontal"][row_index][0] < board.get_size()[0]:
+            # Можно справа проставить точки (пустые ячейки)
+            right_dot_coord = left_sausage_coord + rules["horizontal"][row_index][0]
+
+            for column_index in range(right_dot_coord, board.get_size()[0]):
+                board.fill_cell(row_index, column_index, 0)
+
+    # 2. Обрабатываем столбцы
+
+
 def main():
     rules = read_crossword_rules(RULES_FILE)
     board_size = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
     board = Board(board_size["horizontal"], board_size["vertical"])
     
     fill_middle_parts(rules, board)
+
+    fill_empty_cells_for_partially_filled_row(rules, board)
+
+    # по 11 строке — одна колбаса в строке, но между ними пропуск, все пропуски между подколбасками можно закрасить
 
     board.print()
 
