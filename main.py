@@ -54,7 +54,7 @@ def fill_middle_parts(rules, board):
 
     # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     for row_number, row in enumerate(rules["horizontal"], 1):
-        empty_row = [0 for _ in range(board_horizontal_size)]
+        left_row_variant = [0 for _ in range(board_horizontal_size)]
 
         # 2, 8, 3 — in filled_cells_rule
 
@@ -65,9 +65,18 @@ def fill_middle_parts(rules, board):
         current_cell_index = 0
         for sausage_length_rule in row:
             for index in range(sausage_length_rule):
-                empty_row[index + current_cell_index] = 1
+                left_row_variant[index + current_cell_index] = 1
             current_cell_index += sausage_length_rule + 1
-        print(row_number, empty_row)
+        #print(row_number, left_row_variant)
+
+        # строим правый вариант колбас
+        right_row_variant = [0 for _ in range(board_horizontal_size)]
+        current_cell_index = board_horizontal_size - 1
+        for sausage_length_rule in reversed(row): # в обратном порядке берём колбаски
+            for index in range(sausage_length_rule):
+                right_row_variant[current_cell_index - index] = 1
+            current_cell_index -= sausage_length_rule + 1
+        print(row_number, right_row_variant)
     exit()
 
     # 2. Обходим все колонки в попытке найти серединки, которые можно закрасить, и закрашиваем их
