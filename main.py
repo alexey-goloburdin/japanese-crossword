@@ -17,33 +17,38 @@ def read_crossword_rules(rules_file: str):
         raise
 
 
-def init_board(max_x: int, max_y: int):
-    # координаты верхнего левого угла: (0, 0)
-    # координаты правого нижнего угла: (max_x - 1, max_y - 1)
-    return [
-        [None for column in range(max_x) ] for row in range(max_y)
-    ]
-
-
-def print_board(board):
+class Board:
+    """
+    Координаты верхнего левого угла: (0, 0)
+    Координаты правого нижнего угла: (max_x - 1, max_y - 1)
+    """
     render_values = {
         None: "\033[90m?\033[90m ",  # неизвестно
         1: "\033[32m♥\033[00m ",  # закрашено
         0: "\033[32m‧\033[00m ",  # не закрашено
     }
-    for row in board:
-        for value in row:
-            print(render_values[value], end="")
-        print()
+
+    def __init__(self, max_x: int, max_y: int):
+        self._max_x = max_x
+        self._max_y = max_y
+        self._board = [
+            [None for _ in range(max_x) ] for _ in range(max_y)
+        ]
+
+    def print(self):
+        for row in self._board:
+            for value in row:
+                print(self.render_values[value], end="")
+            print()
 
 
 
 def main():
     rules = read_crossword_rules(RULES_FILE)
     #pprint(rules)
-    field = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
-    board = init_board(field["horizontal"], field["vertical"])
-    print_board(board)
+    board_size = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
+    board = Board(board_size["horizontal"], board_size["vertical"])
+    board.print()
 
 
 if __name__ == "__main__":
