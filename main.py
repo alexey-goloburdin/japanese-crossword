@@ -209,6 +209,33 @@ def fill_empty_cells_for_partially_filled_row(rules, board):
                 board.fill_cell(row_index, column_index, 0)
 
     # 2. Обрабатываем столбцы
+    for column_index in range(board.get_size()[0]):
+        column = [row[column_index] for row in board_state]
+
+        # убираем колонки, в которых пока ничего не заполнено
+        if not any(column): continue
+
+        # убираем колонки, в которых больше 1 колбаски по условиям кроссворда
+        if len(rules["vertical"][column_index]) > 1: continue
+
+        # вычисляем верхнюю сторону текущей заполненной колбасы
+        top_sausage_coord = helpers.find_first_1_index(column)
+        assert top_sausage_coord != -1
+
+        if top_sausage_coord + rules["vertical"][column_index][0] < board.get_size()[1]:
+            # Можно внизу проставить точки (пустые ячейки)
+            bottom_dot_coord = top_sausage_coord + rules["vertical"][column_index][0]
+            for row_index in range(bottom_dot_coord, board.get_size()[1]):
+                board.fill_cell(row_index, column_index, 0)
+
+        # вычисляем нижнюю сторону текущей заполненной колбасы
+        bottom_sausage_coord = helpers.find_last_1_index(column)
+        assert bottom_sausage_coord != -1
+        if bottom_sausage_coord > rules["vertical"][column_index][0]:
+            # Можно слева проставить точки (пустые ячейки)
+            left_dot_coord = bottom_sausage_coord - rules["vertical"][column_index][0]
+            for row_index in range(0, left_dot_coord + 1):
+                board.fill_cell(row_index, column_index, 0)
 
 
 def main():
@@ -227,4 +254,5 @@ def main():
 
 if __name__ == "__main__":
     # TODO написать где-то, что называем колбасками (sausages)
+    # TODO get_size пусть возвращает namedtuple
     main()
