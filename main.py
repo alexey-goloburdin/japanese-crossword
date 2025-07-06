@@ -18,6 +18,10 @@ def read_crossword_rules(rules_file: str):
         raise
 
 
+class IncorrectCellFill(Exception):
+    """Неудачная попытка перевести статус клеточки в 0 или 1"""
+
+
 class Board:
     """
     Координаты верхнего левого угла: (0, 0)
@@ -41,6 +45,9 @@ class Board:
         return self._max_x, self._max_y
 
     def fill_cell(self, row: int, column: int, value: Literal[0] | Literal[1]):
+        old_cell_value = self._board[row][column]
+        if old_cell_value is not None and old_cell_value != value:
+            raise IncorrectCellFill(f"Статус ячейки ({row}, {column}) был {old_cell_value}, нельзя перевести в {value}")
         self._board[row][column] = value
     
     def print(self):
