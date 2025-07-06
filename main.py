@@ -53,30 +53,35 @@ def fill_middle_parts(rules, board):
     board_horizontal_size, board_vertical_size = board.get_board_size()
 
     # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
-    for row_number, row in enumerate(rules["horizontal"], 1):
-        left_row_variant = [0 for _ in range(board_horizontal_size)]
+    # Надо построить самый левый вариант колбас и самый правый вариант колбас и найти пересечения с учётом каждой
+    # колбасы в наборе колбас
+    sausages_variants = []
+    for row_number, rule_row in enumerate(rules["horizontal"], 1):
+        sausages_variant = {sausage_index: {"left_coords": tuple(), "right_coords": tuple()} for sausage_index in range(len(rule_row))}
 
-        # 2, 8, 3 — in filled_cells_rule
-
-        # построить самый левый вариант колбас и самый правый вариант колбас и найти пересечения с учётом каждой
-        # колбасы в наборе колбас
-
-        # строим левый вариант колбас
+        # Строим левый вариант колбас
         current_cell_index = 0
-        for sausage_length_rule in row:
-            for index in range(sausage_length_rule):
-                left_row_variant[index + current_cell_index] = 1
-            current_cell_index += sausage_length_rule + 1
-        #print(row_number, left_row_variant)
+        for sausage_index, sausage_length_rule in enumerate(rule_row):
 
-        # строим правый вариант колбас
-        right_row_variant = [0 for _ in range(board_horizontal_size)]
+            sausage_start_cell = current_cell_index
+            sausage_end_cell = current_cell_index + sausage_length_rule - 1
+
+            sausages_variant[sausage_index]["left_coords"] = (sausage_start_cell, sausage_end_cell)
+            current_cell_index += sausage_length_rule + 1
+
+        # Строим правый вариант колбас
         current_cell_index = board_horizontal_size - 1
-        for sausage_length_rule in reversed(row): # в обратном порядке берём колбаски
-            for index in range(sausage_length_rule):
-                right_row_variant[current_cell_index - index] = 1
+        for sausage_index, sausage_length_rule in enumerate(reversed(rule_row)): # в обратном порядке берём колбаски
+            sausage_end_cell = current_cell_index
+            sausage_start_cell = current_cell_index - sausage_length_rule + 1
+
+            sausages_variant[len(rule_row) - sausage_index - 1]["right_coords"] = (sausage_start_cell, sausage_end_cell)
             current_cell_index -= sausage_length_rule + 1
-        print(row_number, right_row_variant)
+
+        sausages_variants.append(sausages_variant)
+
+    for row in sausages_variants:
+        print(row)
     exit()
 
     # 2. Обходим все колонки в попытке найти серединки, которые можно закрасить, и закрашиваем их
