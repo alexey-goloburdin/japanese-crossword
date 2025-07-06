@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 from pathlib import Path
 from pprint import pprint
 from typing import Literal
@@ -76,6 +77,17 @@ class Board:
             self._print_row_header(row_number)
             print()
         self._print_column_numbers_header()
+
+        print(f"Заполнено {self.get_filled_percent()}%")
+
+    def get_filled_percent(self) -> int:
+        overall_cells = self._max_x * self._max_y
+        filled = 0
+        for row in self._board:
+            for value in row:
+                if value is not None:
+                    filled += 1
+        return math.floor(100 * filled / overall_cells)
 
     def _print_column_numbers_header(self):
         print("   ", end="")
