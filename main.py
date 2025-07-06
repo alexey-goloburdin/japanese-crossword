@@ -2,6 +2,7 @@ import json
 import logging
 from pathlib import Path
 from pprint import pprint
+from typing import Literal
 
 
 RULES_FILE = "rules.json"
@@ -32,12 +33,15 @@ class Board:
         self._max_x = max_x
         self._max_y = max_y
         # В self._board храним массив строк
-        self._board = [
+        self._board: list[list[Literal[0] | Literal[1] | None]] = [
             [None for _ in range(max_x) ] for _ in range(max_y)
         ]
 
     def get_board_size(self):
         return self._max_x, self._max_y
+
+    def fill_cell(self, row: int, column: int, value: Literal[0] | Literal[1]):
+        self._board[row][column] = value
     
     def print(self):
         for row in self._board:
@@ -81,23 +85,20 @@ def fill_middle_parts(rules, board):
 
         sausages_variants.append(sausages_variant)
 
-    for row in sausages_variants:
-        print(row)
+    # for row in sausages_variants:
+    #     print(row)
 
     # Теперь надо найти пересечения одних и тех же колбасок в строках
     for row_index, row in enumerate(sausages_variants):
         for sausage_index, current_sausage_variants in row.items():
             if current_sausage_variants["left_variant_coords"][1] >= current_sausage_variants["right_variant_coords"][0]:
                 # Ура! Есть пересечение!
-                print(f"Есть пересечение на строке {row_index + 1}, правила {rules['horizontal'][row_index]}")
-    
-
-
-    exit()
+                #print(f"Есть пересечение на строке {row_index + 1}, правила {rules['horizontal'][row_index]}")
+                for cell_index in range(current_sausage_variants["right_variant_coords"][0],
+                                        current_sausage_variants["left_variant_coords"][1] + 1):
+                    board.fill_cell(row_index, cell_index, 1)
 
     # 2. Обходим все колонки в попытке найти серединки, которые можно закрасить, и закрашиваем их
-
-
 
 
 def main():
@@ -106,9 +107,14 @@ def main():
     board_size = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
     board = Board(board_size["horizontal"], board_size["vertical"])
     
+    print("initial board state")
+    board.print()
+    
     fill_middle_parts(rules, board)
 
+    print("after fill horizontal moddle parts board state")
     board.print()
+
 
 
 if __name__ == "__main__":
