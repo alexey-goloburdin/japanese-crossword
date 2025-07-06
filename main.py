@@ -238,6 +238,56 @@ def fill_empty_cells_for_partially_filled_row(rules, board):
                 board.fill_cell(row_index, column_index, 0)
 
 
+def fill_gaps_in_one_sausage(rules, board):
+    """
+    Заполняет пробелы в единственной колбасе в строке/столбце
+    """
+    board_state = board.get_state()
+
+    # 1. Обработаем строки
+    for row_index, row in enumerate(board_state):
+        # убираем строки, в которых пока ничего не заполнено
+        if not any(row): continue
+
+        # убираем строки, в которых больше 1 колбаски по условиям кроссворда
+        if len(rules["horizontal"][row_index]) > 1: continue
+        
+        # вычисляем правую сторону текущей заполненной колбасы
+        right_sausage_coord = helpers.find_last_1_index(row)
+        assert right_sausage_coord != -1
+
+        # вычисляем левую сторону текущей заполненной колбасы
+        left_sausage_coord = helpers.find_first_1_index(row)
+        assert left_sausage_coord != -1
+
+        for column_index in range(left_sausage_coord + 1, right_sausage_coord):
+            if board_state[row_index][column_index] == 1: continue
+            board.fill_cell(row_index, column_index, 1)
+
+    # 2. Обработаем столбцы
+    for column_index in range(board.get_size()[0]):
+        column = [row[column_index] for row in board_state]
+
+        # убираем колонки, в которых пока ничего не заполнено
+        if not any(column): continue
+
+        # убираем колонки, в которых больше 1 колбаски по условиям кроссворда
+        if len(rules["vertical"][column_index]) > 1: continue
+
+        # вычисляем верхнюю сторону текущей заполненной колбасы
+        top_sausage_coord = helpers.find_first_1_index(column)
+        assert top_sausage_coord != -1
+
+        # вычисляем нижнюю сторону текущей заполненной колбасы
+        bottom_sausage_coord = helpers.find_last_1_index(column)
+        assert bottom_sausage_coord != -1
+
+        for row_index in range(top_sausage_coord + 1, bottom_sausage_coord):
+            if board_state[row_index][column_index] == 1: continue
+            print("снова ура!")
+            board.fill_cell(row_index, column_index, 1)
+
+
 def main():
     rules = read_crossword_rules(RULES_FILE)
     board_size = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
@@ -247,12 +297,13 @@ def main():
 
     fill_empty_cells_for_partially_filled_row(rules, board)
 
-    # по 11 строке — одна колбаса в строке, но между ними пропуск, все пропуски между подколбасками можно закрасить
+    fill_gaps_in_one_sausage(rules, board)
 
     board.print()
 
 
 if __name__ == "__main__":
     # TODO написать где-то, что называем колбасками (sausages)
+    # TODO продлить те колбаски, которые начинаются рядом с краем строки/столбца и явно идут дальше от начальной точки (см. столбец 10)
     # TODO get_size пусть возвращает namedtuple
     main()
