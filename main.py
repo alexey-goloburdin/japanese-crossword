@@ -50,13 +50,31 @@ def fill_middle_parts(rules, board):
     """
     Ищет середины строк и колонок, которые можно закрасить
     """
-    # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     board_horizontal_size, board_vertical_size = board.get_board_size()
+
+    # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     for row_number, row in enumerate(rules["horizontal"], 1):
-        if sum(row) > board_horizontal_size / 2:
-            print(f"в строке № {row_number} можно чёт закрасить, строка: {row}")
+        empty_row = [0 for _ in range(board_horizontal_size)]
+
+        # 2, 8, 3 — in filled_cells_rule
+
+        # построить самый левый вариант колбас и самый правый вариант колбас и найти пересечения с учётом каждой
+        # колбасы в наборе колбас
+
+        # строим левый вариант колбас
+        current_cell_index = 0
+        for sausage_length_rule in row:
+            for index in range(sausage_length_rule):
+                empty_row[index + current_cell_index] = 1
+            current_cell_index += sausage_length_rule + 1
+        print(row_number, empty_row)
+    exit()
 
     # 2. Обходим все колонки в попытке найти серединки, которые можно закрасить, и закрашиваем их
+
+
+    
+
 
 def main():
     rules = read_crossword_rules(RULES_FILE)
@@ -66,7 +84,7 @@ def main():
     
     fill_middle_parts(rules, board)
 
-    #board.print()
+    board.print()
 
 
 if __name__ == "__main__":
