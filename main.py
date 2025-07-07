@@ -1,24 +1,18 @@
 import json
-import logging
 import math
 from pathlib import Path
 from pprint import pprint
+import sys
 from typing import Literal
 
 import helpers
-
-
-RULES_FILE = "rules.json"
-
-logger = logging.getLogger(__name__)
 
 
 def read_crossword_rules(rules_file: str):
     try:
         return json.loads(Path(rules_file).read_text())
     except:
-        logger.exception("Не удалось считать правила кроссворда из файла %s", rules_file)
-        raise
+        raise SystemExit(f"Не удалось считать правила кроссворда из файла {rules_file}")
 
 
 class IncorrectCellFill(Exception):
@@ -302,8 +296,15 @@ def fill_gaps_in_one_sausage(rules, board):
             board.fill_cell(row_index, column_index, 1)
 
 
+def _get_rules_file() -> str:
+    try:
+        return sys.argv[1]
+    except IndexError:
+        raise SystemExit("Ошибка: не переданы входные данные")
+
+
 def main():
-    rules = read_crossword_rules(RULES_FILE)
+    rules = read_crossword_rules(_get_rules_file())
     board_size = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
     board = Board(board_size["horizontal"], board_size["vertical"])
     
