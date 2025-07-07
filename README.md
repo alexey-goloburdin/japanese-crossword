@@ -11,7 +11,6 @@ cd japanese-crossword
 
 # Установка зависимостей
 uv sync
-uv pip install -e .
 
 # Запуск решения одного из кроссвордов, его исхдодные данные в JSON-файле crosswords/1.json
 uv run python -m japanese_crossword crosswords/1.json
@@ -22,6 +21,7 @@ uv run python -m japanese_crossword crosswords/1.json
 ```bash
 # Создание виртуального окружения и установка dev-зависимостей
 uv sync --dev
+uv pip install -e .
 
 # Установка правил pre-commit для их выполнения перед коммитом
 uv run pre-commit install
@@ -37,7 +37,7 @@ uv run ruff format src/ tests/
 uv run pyright src/
 ```
 
-Колбасками в коде называем непрерывные закрашенные сегменты:)
+«Колбасками» в коде называем непрерывные закрашенные сегменты:)
 
 # TODO
 
