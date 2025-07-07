@@ -1,22 +1,25 @@
 import json
 import math
-from pathlib import Path
-from pprint import pprint
 import sys
+from pathlib import Path
 from typing import Literal
 
-import helpers
+from japanese_crossword import helpers
 
 
 def read_crossword_rules(rules_file: str):
     try:
         return json.loads(Path(rules_file).read_text())
     except:
-        raise SystemExit(f"Не удалось считать правила кроссворда из файла {rules_file}")
+        sys.exit(f"Не удалось считать правила кроссворда из файла {rules_file}")
 
 
 class IncorrectCellFill(Exception):
     """Неудачная попытка перевести статус клеточки в 0 или 1"""
+
+
+type BoardRowState = list[Literal[0, 1] | None]
+type BoardState = list[BoardRowState]
 
 
 class Board:
@@ -24,9 +27,9 @@ class Board:
     Координаты верхнего левого угла: (0, 0)
     Координаты правого нижнего угла: (max_x - 1, max_y - 1)
     """
+
     render_values = {
         # "\033[2m" + "Тусклый текст" + "\033[0m"
-
         None: "\033[2m◌\033[0m ",  # неизвестно
         1: "\033[32m■\033[00m ",  # закрашено
         0: "\033[2m‧\033[0m ",  # не закрашено
@@ -36,9 +39,7 @@ class Board:
         self._max_x = max_x
         self._max_y = max_y
         # В self._board храним массив строк
-        self._board: list[list[Literal[0] | Literal[1] | None]] = [
-            [None for _ in range(max_x) ] for _ in range(max_y)
-        ]
+        self._board: BoardState = [[None for _ in range(max_x)] for _ in range(max_y)]
 
     def get_size(self):
         """
@@ -46,21 +47,23 @@ class Board:
         """
         return self._max_x, self._max_y
 
-    def get_state(self):
+    def get_state(self) -> BoardState:
         """
         Возвращает копию текущего состояния поля — массив строк.
         """
         return list(self._board)
 
-    def fill_cell(self, row: int, column: int, value: Literal[0] | Literal[1]):
+    def fill_cell(self, row: int, column: int, value: Literal[0, 1]):
         """
         Проставляет ячейку заполненной или пустой.
         """
         old_cell_value = self._board[row][column]
         if old_cell_value is not None and old_cell_value != value:
-            raise IncorrectCellFill(f"Статус ячейки ({row}, {column}) был {old_cell_value}, нельзя перевести в {value}")
+            raise IncorrectCellFill(
+                f"Статус ячейки ({row}, {column}) был {old_cell_value}, нельзя перевести в {value}"
+            )
         self._board[row][column] = value
-    
+
     def print(self):
         """
         Печатает текущее состояние поля.
@@ -95,7 +98,7 @@ class Board:
             else:
                 print("  ", end="")
         print()
-    
+
     def _print_row_header(self, row_number: int):
         if row_number in (1, 5):
             print(f"{row_number}  ", end="")
@@ -113,9 +116,13 @@ def _find_sausages_possible_edge_variants(rules, board_size):
     sausages_variants_in_rows = []  # список строк или колонок с гипотетическими крайними положениями колбасок
     for rule_row in rules:
         # гипотетические положения колбасок в текущей строке
-        sausages_variants_in_row = {sausage_index: {"start_variant_coords": tuple(),
-                                                    "end_variant_coords": tuple()}
-                                    for sausage_index in range(len(rule_row))}
+        sausages_variants_in_row = {
+            sausage_index: {
+                "start_variant_coords": tuple(),
+                "end_variant_coords": tuple(),
+            }
+            for sausage_index in range(len(rule_row))
+        }
 
         # Строим левый (от начала строки/колонки) вариант колбас
         current_cell_index = 0
@@ -123,35 +130,49 @@ def _find_sausages_possible_edge_variants(rules, board_size):
             sausage_start_cell = current_cell_index
             sausage_end_cell = current_cell_index + sausage_length_rule - 1
 
-            sausages_variants_in_row[sausage_index]["start_variant_coords"] = (sausage_start_cell, sausage_end_cell)
+            sausages_variants_in_row[sausage_index]["start_variant_coords"] = (
+                sausage_start_cell,
+                sausage_end_cell,
+            )
             current_cell_index += sausage_length_rule + 1
 
         # Строим правый (от конца строки/колонки) вариант колбас
         current_cell_index = board_size - 1
-        for sausage_index, sausage_length_rule in enumerate(reversed(rule_row)): # в обратном порядке берём колбаски
+        for sausage_index, sausage_length_rule in enumerate(
+            reversed(rule_row)
+        ):  # в обратном порядке берём колбаски
             sausage_end_cell = current_cell_index
             sausage_start_cell = current_cell_index - sausage_length_rule + 1
 
-            sausages_variants_in_row[len(rule_row) - sausage_index - 1]["end_variant_coords"] = \
-                    (sausage_start_cell, sausage_end_cell)
+            sausages_variants_in_row[len(rule_row) - sausage_index - 1][
+                "end_variant_coords"
+            ] = (sausage_start_cell, sausage_end_cell)
             current_cell_index -= sausage_length_rule + 1
 
         sausages_variants_in_rows.append(sausages_variants_in_row)
     return sausages_variants_in_rows
 
 
-def _fill_sausages_variants_intersections(sausages_variants_in_rows,
-                                          board, *,
-                                          processing: Literal["rows"] | Literal["columns"]):
+def _fill_sausages_variants_intersections(
+    sausages_variants_in_rows,
+    board: Board,
+    *,
+    processing: Literal["rows", "columns"],
+):
     """
     Вычисляет пересечения и «закрашивает их» по строкам или колонкам.
     """
     for row_index, row in enumerate(sausages_variants_in_rows):
         for current_sausage_variants in row.values():
-            if current_sausage_variants["start_variant_coords"][1] >= current_sausage_variants["end_variant_coords"][0]:
+            if (
+                current_sausage_variants["start_variant_coords"][1]
+                >= current_sausage_variants["end_variant_coords"][0]
+            ):
                 # Ура! Есть пересечение!
-                for cell_index in range(current_sausage_variants["end_variant_coords"][0],
-                                        current_sausage_variants["start_variant_coords"][1] + 1):
+                for cell_index in range(
+                    current_sausage_variants["end_variant_coords"][0],
+                    current_sausage_variants["start_variant_coords"][1] + 1,
+                ):
                     if processing == "rows":
                         board.fill_cell(row_index, cell_index, 1)
                     elif processing == "columns":
@@ -160,7 +181,7 @@ def _fill_sausages_variants_intersections(sausages_variants_in_rows,
                         raise ValueError("incorrect processing value")
 
 
-def fill_middle_parts(rules, board):
+def fill_middle_parts(rules, board: Board):
     """
     Ищет середины строк и колонок, которые точно можно закрасить, и закрашивает их.
     """
@@ -168,32 +189,41 @@ def fill_middle_parts(rules, board):
 
     # 1. Обходим все строки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     # Надо построить самый левый вариант колбас и самый правый вариант колбас
-    sausages_variants_in_rows = _find_sausages_possible_edge_variants(rules["horizontal"], board_horizontal_size)
+    sausages_variants_in_rows = _find_sausages_possible_edge_variants(
+        rules["horizontal"], board_horizontal_size
+    )
     # Теперь надо найти пересечения одних и тех же колбасок в строках
-    _fill_sausages_variants_intersections(sausages_variants_in_rows, board, processing="rows")
+    _fill_sausages_variants_intersections(
+        sausages_variants_in_rows, board, processing="rows"
+    )
 
     # 2. Обходим все колонки в попытке найти серединки, которые можно закрасить, и закрашиваем их
     # Надо построить самый верхний вариант колбас и самый нижний вариант колбас
-    sausages_variants_in_columns = _find_sausages_possible_edge_variants(rules["vertical"], board_vertical_size)
-    _fill_sausages_variants_intersections(sausages_variants_in_columns, board, processing="columns")
+    sausages_variants_in_columns = _find_sausages_possible_edge_variants(
+        rules["vertical"], board_vertical_size
+    )
+    _fill_sausages_variants_intersections(
+        sausages_variants_in_columns, board, processing="columns"
+    )
 
 
-
-def fill_empty_cells_for_partially_filled_row(rules, board):
+def fill_empty_cells_for_partially_filled_row(rules, board: Board):
     """
     Ищет строки/колонки с одной колбаской, которая уже частично заполнена, чтобы проставить пустые ячейки
     в краях строки/колонки там, где это возможно.
     """
     board_state = board.get_state()
-    
+
     # 1. Обрабатываем строки
     for row_index, row in enumerate(board_state):
         # убираем строки, в которых пока ничего не заполнено
-        if not any(row): continue
+        if not any(row):
+            continue
 
         # убираем строки, в которых больше 1 колбаски по условиям кроссворда
-        if len(rules["horizontal"][row_index]) > 1: continue
-        
+        if len(rules["horizontal"][row_index]) > 1:
+            continue
+
         # вычисляем правую сторону текущей заполненной колбасы
         right_sausage_coord = helpers.find_last_1_index(row)
         assert right_sausage_coord != -1
@@ -218,13 +248,15 @@ def fill_empty_cells_for_partially_filled_row(rules, board):
 
     # 2. Обрабатываем столбцы
     for column_index in range(board.get_size()[0]):
-        column = [row[column_index] for row in board_state]
+        column: BoardRowState = [row[column_index] for row in board_state]
 
         # убираем колонки, в которых пока ничего не заполнено
-        if not any(column): continue
+        if not any(column):
+            continue
 
         # убираем колонки, в которых больше 1 колбаски по условиям кроссворда
-        if len(rules["vertical"][column_index]) > 1: continue
+        if len(rules["vertical"][column_index]) > 1:
+            continue
 
         # вычисляем верхнюю сторону текущей заполненной колбасы
         top_sausage_coord = helpers.find_first_1_index(column)
@@ -246,7 +278,7 @@ def fill_empty_cells_for_partially_filled_row(rules, board):
                 board.fill_cell(row_index, column_index, 0)
 
 
-def fill_gaps_in_one_sausage(rules, board):
+def fill_gaps_in_one_sausage(rules, board: Board):
     """
     Заполняет пробелы в единственной колбасе в строке/столбце
     """
@@ -255,11 +287,13 @@ def fill_gaps_in_one_sausage(rules, board):
     # 1. Обработаем строки
     for row_index, row in enumerate(board_state):
         # убираем строки, в которых пока ничего не заполнено
-        if not any(row): continue
+        if not any(row):
+            continue
 
         # убираем строки, в которых больше 1 колбаски по условиям кроссворда
-        if len(rules["horizontal"][row_index]) > 1: continue
-        
+        if len(rules["horizontal"][row_index]) > 1:
+            continue
+
         # вычисляем правую сторону текущей заполненной колбасы
         right_sausage_coord = helpers.find_last_1_index(row)
         assert right_sausage_coord != -1
@@ -269,18 +303,21 @@ def fill_gaps_in_one_sausage(rules, board):
         assert left_sausage_coord != -1
 
         for column_index in range(left_sausage_coord + 1, right_sausage_coord):
-            if board_state[row_index][column_index] == 1: continue
+            if board_state[row_index][column_index] == 1:
+                continue
             board.fill_cell(row_index, column_index, 1)
 
     # 2. Обработаем столбцы
     for column_index in range(board.get_size()[0]):
-        column = [row[column_index] for row in board_state]
+        column: BoardRowState = [row[column_index] for row in board_state]
 
         # убираем колонки, в которых пока ничего не заполнено
-        if not any(column): continue
+        if not any(column):
+            continue
 
         # убираем колонки, в которых больше 1 колбаски по условиям кроссворда
-        if len(rules["vertical"][column_index]) > 1: continue
+        if len(rules["vertical"][column_index]) > 1:
+            continue
 
         # вычисляем верхнюю сторону текущей заполненной колбасы
         top_sausage_coord = helpers.find_first_1_index(column)
@@ -291,7 +328,8 @@ def fill_gaps_in_one_sausage(rules, board):
         assert bottom_sausage_coord != -1
 
         for row_index in range(top_sausage_coord + 1, bottom_sausage_coord):
-            if board_state[row_index][column_index] == 1: continue
+            if board_state[row_index][column_index] == 1:
+                continue
             print("снова ура!")
             board.fill_cell(row_index, column_index, 1)
 
@@ -300,14 +338,17 @@ def _get_rules_file() -> str:
     try:
         return sys.argv[1]
     except IndexError:
-        raise SystemExit("Ошибка: не переданы входные данные")
+        sys.exit("Ошибка: не переданы входные данные")
 
 
 def main():
     rules = read_crossword_rules(_get_rules_file())
-    board_size = {"horizontal": len(rules["vertical"]), "vertical": len(rules["horizontal"])}
+    board_size = {
+        "horizontal": len(rules["vertical"]),
+        "vertical": len(rules["horizontal"]),
+    }
     board = Board(board_size["horizontal"], board_size["vertical"])
-    
+
     fill_middle_parts(rules, board)
 
     fill_empty_cells_for_partially_filled_row(rules, board)
